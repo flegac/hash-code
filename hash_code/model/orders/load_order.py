@@ -17,11 +17,5 @@ class LoadOrder(DroneOrder):
         if not self.fly_to(sim, wh.cell_id):
             return
 
-        # print('{} load from {}'.format(self.drone_id, self.warehouse_id))
-
-        assert wh.products[self.product_id] >= self.n
-        drone.products[self.product_id] += self.n
-        wh.products[self.product_id] -= self.n
-        drone.weight += sim.product_weights[self.product_id] * self.n
-        assert drone.weight <= sim.max_load
+        sim.transfert(wh, drone, self.product_id, self.n)
         self.mark_as_done()

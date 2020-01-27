@@ -17,10 +17,7 @@ class DeliverOrder(DroneOrder):
         if not self.fly_to(sim, order.cell_id):
             return
 
-        # print('{} deliver to {}'.format(self.drone_id, order.cell_id))
-
-        drone.products[self.product_id] -= self.n
-        drone.weight -= sim.product_weights[self.product_id] * self.n
+        sim.deliver(drone, self.product_id, self.n)
 
         order.delivered[self.product_id] += self.n
         if order.is_done():

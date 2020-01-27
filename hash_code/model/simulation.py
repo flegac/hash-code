@@ -21,9 +21,23 @@ class Simulation(object):
         self.orders: List[CustomerOrder] = []
         self.current_time = 0
 
+        self.deliver_warehouse = Warehouse(0, 0, [0] * len(product_weights))
+
     @property
     def iddle_drones(self):
         return [_ for _ in self.drones if _.current_order is None]
+
+    def deliver(self, drone: Drone, product_id: int, n: int):
+        self.transfert(self.deliver_warehouse, drone, product_id, -n)
+
+    def transfert(self, warehouse: Warehouse, drone: Drone, product_id: int, n: int):
+        assert warehouse.products[product_id] - n >= 0
+        assert drone.products[product_id] + n >= 0
+        assert drone.weight + self.product_weights[product_id] * n <= self.max_load
+
+        drone.products[product_id] += n
+        warehouse.products[product_id] -= n
+        drone.weight += self.product_weights[product_id] * n
 
     def create_warehouse(self, r: int, c: int, products: List[int]):
         assert len(products) == len(products)

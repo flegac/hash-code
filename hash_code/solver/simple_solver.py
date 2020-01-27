@@ -34,19 +34,13 @@ def plan_order(sim, drone: Drone, order: CustomerOrder):
     for product_id, n in enumerate(order.products):
         wh = find_warehouse(sim, product_id, n)
         if n > 0:
-            # print('{} deliver {}x{} from {} to {}'.format(
-            #     drone.drone_id, n, product_id, wh.cell_id, order.cell_id))
             max_items = math.floor((sim.max_load - drone.weight) // sim.product_weights[product_id])
-            if n <= max_items:
-                drone.orders.append(LoadOrder(drone.drone_id, wh.warehouse_id, product_id, n))
-                drone.orders.append(DeliverOrder(drone.drone_id, order.order_id, product_id, n))
-            else:
-                x = n
-                while x > 0:
-                    k = min(x, max_items)
-                    drone.orders.append(LoadOrder(drone.drone_id, wh.warehouse_id, product_id, k))
-                    drone.orders.append(DeliverOrder(drone.drone_id, order.order_id, product_id, k))
-                    x += k
+
+            while n > 0:
+                k = min(n, max_items)
+                drone.orders.append(LoadOrder(drone.drone_id, wh.warehouse_id, product_id, k))
+                drone.orders.append(DeliverOrder(drone.drone_id, order.order_id, product_id, k))
+                n -= k
 
 
 def find_warehouse(sim: Simulation, product_id: int, n: int):

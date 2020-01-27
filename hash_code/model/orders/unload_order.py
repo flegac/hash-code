@@ -19,8 +19,5 @@ class UnloadOrder(DroneOrder):
         if not self.fly_to(sim, wh.cell_id):
             return
 
-        drone.products[self.product_id] -= self.n
-        drone.weight -= sim.product_weights[self.product_id] * self.n
-
-        wh.products[self.product_id] += self.n
+        sim.transfert(wh, drone, self.product_id, -self.n)
         self.mark_as_done()
