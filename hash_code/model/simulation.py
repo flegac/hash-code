@@ -3,7 +3,7 @@ from typing import List
 
 from hash_code.model.area import Area
 from hash_code.model.customer_order import CustomerOrder
-from hash_code.model.drone import Drone
+from hash_code.model.drone import Drone, DroneOrder
 from hash_code.model.warehouse import Warehouse
 
 
@@ -22,6 +22,11 @@ class Simulation(object):
         self.current_time = 0
 
         self.deliver_warehouse = Warehouse(0, 0, [0] * len(product_weights))
+        self.iddle_drone_ids = set(range(drones))
+
+    def assign_orders(self, drone_id: int, orders: List[DroneOrder]):
+        self.drones[drone_id].orders.extend(orders)
+        self.iddle_drone_ids.remove(drone_id)
 
     @property
     def iddle_drones(self):
@@ -37,6 +42,8 @@ class Simulation(object):
 
         drone.products[product_id] += n
         warehouse.products[product_id] -= n
+        warehouse.reserved[product_id] -= n
+
         drone.weight += self.product_weights[product_id] * n
 
     def create_warehouse(self, r: int, c: int, products: List[int]):
@@ -72,6 +79,8 @@ class Simulation(object):
             order = drone.current_order
             if order:
                 order.execute(self)
+            else:
+                self.iddle_drone_ids.add(drone.drone_id)
         self.current_time += 1
 
     def simulate(self):

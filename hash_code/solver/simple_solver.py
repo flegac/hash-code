@@ -1,7 +1,8 @@
 import math
 
+import tqdm
+
 from hash_code.model.customer_order import CustomerOrder
-from hash_code.model.drone import Drone
 from hash_code.model.orders.deliver_order import DeliverOrder
 from hash_code.model.orders.load_order import LoadOrder
 from hash_code.model.simulation import Simulation
@@ -10,41 +11,44 @@ from hash_code.solver.solver import Solver
 
 
 class SimpleSolver(Solver):
-    def solve(self, path: str):
-        sim = Parser(path).get_sim()
+    def __init__(self, path: str):
+        super().__init__(path)
+        self.sim = Parser(path).get_sim()
+        self.order_id = 0
 
+    def solve(self):
+        print('solving : {}'.format(self.path))
         order_id = 0
 
-        for step in range(sim.deadline):
-            for drone in sim.iddle_drones:
-                if drone.drone_id != 0:
-                    continue
-                try:
-                    order = sim.orders[order_id]
-                    order_id += 1
-                    plan_order(sim, drone, order)
-                except:
-                    pass
-            sim.simulate_once()
+        for _ in tqdm.tqdm(range(self.sim.deadline)):
+            while len(self.sim.iddle_drones) > 0:
+                if order_id >= len(self.sim.orders):
+                    break
+                order = self.sim.orders[order_id]
+                order_id += 1
+                self.plan_order(order)
+            self.sim.simulate_once()
 
-        return sim.score()
+        return self.sim.score()
 
+    def plan_order(self, order: CustomerOrder):
+        drone = self.sim.iddle_drones[0]
+        for product_id, n in enumerate(order.products):
+            wh = find_warehouse(self.sim, product_id, n)
+            if n > 0:
+                max_items = math.floor((self.sim.max_load - drone.weight) // self.sim.product_weights[product_id])
+                assert max_items > 0
 
-def plan_order(sim, drone: Drone, order: CustomerOrder):
-    for product_id, n in enumerate(order.products):
-        wh = find_warehouse(sim, product_id, n)
-        if n > 0:
-            max_items = math.floor((sim.max_load - drone.weight) // sim.product_weights[product_id])
-
-            while n > 0:
-                k = min(n, max_items)
-                drone.orders.append(LoadOrder(drone.drone_id, wh.warehouse_id, product_id, k))
-                drone.orders.append(DeliverOrder(drone.drone_id, order.order_id, product_id, k))
-                n -= k
+                while n > 0:
+                    k = min(n, max_items)
+                    wh.reserved[product_id] += n
+                    drone.orders.append(LoadOrder(drone.drone_id, wh.warehouse_id, product_id, k))
+                    drone.orders.append(DeliverOrder(drone.drone_id, order.order_id, product_id, k))
+                    n -= k
 
 
 def find_warehouse(sim: Simulation, product_id: int, n: int):
     for wh in sim.warehouses:
-        if wh.products[product_id] >= n:
+        if wh.products[product_id] - wh.reserved[product_id] >= n:
             return wh
     raise ValueError()

@@ -1,4 +1,7 @@
 class Solver(object):
 
-    def solve(self, path: str) -> int:
+    def __init__(self, path: str):
+        self.path = path
+
+    def solve(self) -> int:
         raise ValueError()

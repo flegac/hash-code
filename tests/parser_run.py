@@ -41,9 +41,11 @@ def show_data(file):
 
 
 if __name__ == '__main__':
-    solver = SimpleSolver()
-    for _ in glob.glob('resources/*.in'):
-        score = solver.solve(_)
-        print('simulation completed ! Final score : {} -> {}'.format(os.path.basename(_), score))
 
+    total = 0
+    for _ in glob.glob('resources/*.in'):
+        score = SimpleSolver(_).solve()
+        print('simulation completed ! Final score : {} -> {}'.format(os.path.basename(_), score))
+        total += score
         # show_data(_)
+    print('final score : {}'.format(total))

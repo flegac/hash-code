@@ -40,10 +40,13 @@ class Drone(object):
         self.products = [0] * product_number
         self.orders: List[DroneOrder] = []
         self.weight = 0
+        self.current_order_id = 0
 
     @property
     def current_order(self):
-        for _ in self.orders:
+        for _ in self.orders[self.current_order_id:]:
             if not _.is_done:
                 return _
+            else:
+                self.current_order_id += 1
         return None
