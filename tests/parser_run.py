@@ -2,7 +2,10 @@ import glob
 import os
 from typing import List
 
-from hash_code.parser import Parser
+import tqdm
+
+from hash_code.model.simulator import Simulator
+from hash_code.problem_IO import ProblemIO
 from hash_code.solver.simple_solver import SimpleSolver
 from hash_code.visu.visu_problem import Points
 
@@ -15,8 +18,8 @@ def weight(products: List[int]):
     return w
 
 
-def show_data(file):
-    sim = Parser(file).get_sim()
+def show_data(path: str):
+    sim = ProblemIO.parse_input(path)
 
     points = Points()
 
@@ -35,17 +38,38 @@ def show_data(file):
         len(sim.warehouses),
         len(sim.product_weights),
         len(sim.orders),
-        os.path.basename(file).replace('.in', ''))
+        os.path.basename(path).replace('.in', ''))
 
     points.show(name)
 
 
 if __name__ == '__main__':
 
-    total = 0
-    for _ in glob.glob('resources/*.in'):
-        score = SimpleSolver(_).solve()
-        print('simulation completed ! Final score : {} -> {}'.format(os.path.basename(_), score))
-        total += score
+    total_score = 0
+    for input_path in glob.glob('resources/*.in'):
+        output_path = input_path.replace('.in', '.out')
+
+        state = ProblemIO.parse_input(input_path)
+
+        state = SimpleSolver().solve(state)
+        ProblemIO.export(output_path, state)
+
+        score = state.score()
+        print('Score : {} -> {}'.format(state.name, score))
+        total_score += score
         # show_data(_)
-    print('final score : {}'.format(total))
+    print('final score : {}'.format(total_score))
+
+    # total_score = 0
+    # for input_path in glob.glob('resources/*.in'):
+    #     output_path = input_path.replace('.in', '.out')
+    #
+    #     state = ProblemIO.parse_input(input_path)
+    #     ProblemIO.parse_output(state, output_path)
+    #
+    #     for _ in tqdm.tqdm(range(state.deadline)):
+    #         Simulator(state).simulate()
+    #     score = state.score()
+    #     print('Score : {} -> {}'.format(state.name, score))
+    #     total_score += score
+    # print('final score : {}'.format(total_score))

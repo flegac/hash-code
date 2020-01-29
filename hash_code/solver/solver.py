@@ -1,7 +1,6 @@
+from hash_code.model.state import State
+
+
 class Solver(object):
-
-    def __init__(self, path: str):
-        self.path = path
-
-    def solve(self) -> int:
+    def solve(self, state: State) -> State:
         raise ValueError()
