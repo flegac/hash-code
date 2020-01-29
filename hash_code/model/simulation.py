@@ -26,11 +26,12 @@ class Simulation(object):
 
     def assign_orders(self, drone_id: int, orders: List[DroneOrder]):
         self.drones[drone_id].orders.extend(orders)
-        self.iddle_drone_ids.remove(drone_id)
+        self.iddle_drone_ids.discard(drone_id)
 
     @property
     def iddle_drones(self):
-        return [_ for _ in self.drones if _.current_order is None]
+        # return [_ for _ in self.drones if _.current_order is None]
+        return [self.drones[_] for _ in sorted(self.iddle_drone_ids)]
 
     def deliver(self, drone: Drone, product_id: int, n: int):
         self.transfert(self.deliver_warehouse, drone, product_id, -n)
