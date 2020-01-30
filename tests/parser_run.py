@@ -1,10 +1,8 @@
 import glob
 import os
+import time
 from typing import List
 
-import tqdm
-
-from hash_code.model.simulator import Simulator
 from hash_code.problem_IO import ProblemIO
 from hash_code.solver.simple_solver import SimpleSolver
 from hash_code.visu.visu_problem import Points
@@ -45,6 +43,7 @@ def show_data(path: str):
 
 if __name__ == '__main__':
 
+    start = time.time()
     total_score = 0
     for input_path in glob.glob('resources/*.in'):
         output_path = input_path.replace('.in', '.out')
@@ -59,6 +58,8 @@ if __name__ == '__main__':
         total_score += score
         # show_data(_)
     print('final score : {}'.format(total_score))
+    time_spent = time.time() - start
+    print('total time : {}s'.format(time_spent))
 
     # total_score = 0
     # for input_path in glob.glob('resources/*.in'):

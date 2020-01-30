@@ -26,19 +26,31 @@ class SimpleSolver(Solver):
         return drones[0]
 
     def sort_by_travel_distance(self, order: CustomerOrder):
-        value = 0
+        value = self.sim.state.area.dist(self.state.warehouses[0].cell_id, order.cell_id) * 2
+
         for product_id, n in enumerate(order.products):
-            if n > 0:
-                wh = self.find_best_warehouse(order, product_id, n)
-                value += self.sim.state.area.dist(order.cell_id, wh.cell_id)
+            if n == 0:
+                continue
+
+            wh = self.find_best_warehouse(order, product_id, n)
+            value += self.sim.state.area.dist(self.state.warehouses[0].cell_id, wh.cell_id) * 1
+
+            max_items = math.floor(self.state.max_load // self.state.product_weights[product_id])
+            k = min(n, max_items)
+            value += self.sim.state.area.dist(order.cell_id, wh.cell_id) * math.ceil(n // k) * 1
+
         return value
 
     def task_generator(self, metric: Callable[[CustomerOrder], float]):
         orders = sorted(self.state.orders, key=metric)
-        for _ in orders:
+        while len(orders) > 0:
+            _ = orders.pop(0)
             for product_id, n in enumerate(_.products):
-                if n > 0:
-                    yield (_, product_id, n)
+                max_items = math.floor(self.state.max_load // self.state.product_weights[product_id])
+                k = min(n, max_items)
+                while n > 0:
+                    n -= k
+                    yield (_, product_id, k)
 
     def solve(self, state: State):
         self.sim = Simulator(state=state)
@@ -53,25 +65,19 @@ class SimpleSolver(Solver):
                 if not task:
                     self.sim.assign_orders(_.drone_id, [WaitOrder(_.drone_id, self.state.deadline)])
                 else:
-                    self.plan_order(*task)
+                    self.plan_task(*task)
             self.sim.simulate()
 
         return self.state
 
-    def plan_order(self, order: CustomerOrder, product_id: int, n: int):
+    def plan_task(self, order: CustomerOrder, product_id: int, n: int):
         drone = self.select_best_drone(order, product_id, n)
-        max_items = math.floor((self.state.max_load - drone.weight) // self.state.product_weights[product_id])
-        assert max_items > 0
-
-        while n > 0:
-            k = min(n, max_items)
-            wh = self.find_best_warehouse(order, product_id, k)
-            wh.reserved[product_id] += k
-            self.sim.assign_orders(drone.drone_id, [
-                LoadOrder(drone.drone_id, wh.warehouse_id, product_id, k),
-                DeliverOrder(drone.drone_id, order.order_id, product_id, k)
-            ])
-            n -= k
+        wh = self.find_best_warehouse(order, product_id, n)
+        wh.reserved[product_id] += n
+        self.sim.assign_orders(drone.drone_id, [
+            LoadOrder(drone.drone_id, wh.warehouse_id, product_id, n),
+            DeliverOrder(drone.drone_id, order.order_id, product_id, n)
+        ])
 
     def find_best_warehouse(self, order: CustomerOrder, product_id: int, n: int):
         for wh in sorted(self.state.warehouses, key=lambda wh: self.state.area.dist(wh.cell_id, order.cell_id)):
