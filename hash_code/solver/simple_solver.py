@@ -1,9 +1,11 @@
 import math
-from typing import Callable
+from typing import List
 
+import numpy as np
 import tqdm
 
 from hash_code.model.customer_order import CustomerOrder
+from hash_code.model.drone import Drone
 from hash_code.model.orders.deliver_order import DeliverOrder
 from hash_code.model.orders.load_order import LoadOrder
 from hash_code.model.orders.wait_order import WaitOrder
@@ -13,19 +15,32 @@ from hash_code.solver.solver import Solver
 
 
 class SimpleSolver(Solver):
-    def __init__(self):
+    def __init__(self, permutation: np.ndarray = None):
         self.sim = None
+        self.permutation = permutation
 
     @property
     def state(self):
         return self.sim.state
 
-    def select_best_drone(self, order: CustomerOrder, product_id: int, n: int):
+    def find_best_drone(self, order: CustomerOrder, product_id: int, n: int):
+        def metric(drone: Drone):
+            IGNORE_SCORE = 1000000
+
+            score = 0
+            if len(drone.order_queue) > 1:
+                return IGNORE_SCORE
+            if drone.current_order is not None:
+                if drone.current_order.remaining_time is None:
+                    return IGNORE_SCORE
+                score += 2 * drone.current_order.remaining_time
+            return self.state.area.dist(drone.cell_id, wh.cell_id)
+
         wh = self.find_best_warehouse(order, product_id, n)
-        drones = sorted(self.sim.idle_drones, key=lambda drone: self.state.area.dist(drone.cell_id, wh.cell_id))
+        drones = sorted(self.sim.state.drones, key=metric)
         return drones[0]
 
-    def sort_by_travel_distance(self, order: CustomerOrder):
+    def travel_time_metric(self, order: CustomerOrder):
         value = self.sim.state.area.dist(self.state.warehouses[0].cell_id, order.cell_id) * 2
 
         for product_id, n in enumerate(order.products):
@@ -41,8 +56,7 @@ class SimpleSolver(Solver):
 
         return value
 
-    def task_generator(self, metric: Callable[[CustomerOrder], float]):
-        orders = sorted(self.state.orders, key=metric)
+    def task_generator(self, orders: List[CustomerOrder]):
         while len(orders) > 0:
             _ = orders.pop(0)
             for product_id, n in enumerate(_.products):
@@ -56,7 +70,11 @@ class SimpleSolver(Solver):
         self.sim = Simulator(state=state)
         print('solving : {}'.format(self.state.name))
 
-        generator = self.task_generator(self.sort_by_travel_distance)
+        orders = sorted(self.state.orders, key=self.travel_time_metric)
+        if self.permutation is not None:
+            orders = [self.state.orders[b] for b in self.permutation]
+
+        generator = self.task_generator(orders)
 
         for _ in tqdm.tqdm(range(self.state.deadline)):
             iddle_drones = self.sim.idle_drones
@@ -71,7 +89,7 @@ class SimpleSolver(Solver):
         return self.state
 
     def plan_task(self, order: CustomerOrder, product_id: int, n: int):
-        drone = self.select_best_drone(order, product_id, n)
+        drone = self.find_best_drone(order, product_id, n)
         wh = self.find_best_warehouse(order, product_id, n)
         wh.reserved[product_id] += n
         self.sim.assign_orders(drone.drone_id, [

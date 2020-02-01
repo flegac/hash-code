@@ -18,6 +18,10 @@ class DroneOrder(abc.ABC):
     def is_done(self):
         return self._done
 
+    @property
+    def remaining_time(self):
+        return self._fly_time
+
     def fly_to(self, state, cell_id: int) -> bool:
         drone = state.drones[self.drone_id]
 

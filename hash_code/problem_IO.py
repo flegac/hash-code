@@ -40,22 +40,26 @@ class ProblemIO(object):
     @staticmethod
     def parse_output(state: State, path: str):
         with open(path) as fd:
-            line = fd.readline().split()
-            if line[1] == 'D':
-                order = DeliverOrder(int(line[0]), int(line[2]), int(line[3]), int(line[4]))
-            elif line[1] == 'L':
-                order = LoadOrder(int(line[0]), int(line[2]), int(line[3]), int(line[4]))
-            elif line[1] == 'U':
-                order = UnloadOrder(int(line[0]), int(line[2]), int(line[3]), int(line[4]))
-            elif line[1] == 'W':
-                order = WaitOrder(int(line[0]), int(line[2]))
-            else:
-                raise ValueError()
-            state.drones[order.drone_id].order_queue.append(order)
+            line_number = int(fd.readline())
+            for _ in range(line_number):
+                line = fd.readline().split()
+                if line[1] == 'D':
+                    order = DeliverOrder(int(line[0]), int(line[2]), int(line[3]), int(line[4]))
+                elif line[1] == 'L':
+                    order = LoadOrder(int(line[0]), int(line[2]), int(line[3]), int(line[4]))
+                elif line[1] == 'U':
+                    order = UnloadOrder(int(line[0]), int(line[2]), int(line[3]), int(line[4]))
+                elif line[1] == 'W':
+                    order = WaitOrder(int(line[0]), int(line[2]))
+                else:
+                    raise ValueError()
+                state.drones[order.drone_id].order_queue.append(order)
 
     @staticmethod
     def export(path: str, state: State):
+        line_number = sum([len(drone.order_history + drone.order_queue) for drone in state.drones])
         with open(path, 'w') as fd:
+            fd.write('{}\n'.format(line_number))
             for drone in state.drones:
                 lines = [_.export() + '\n' for _ in drone.order_history + drone.order_queue]
                 fd.writelines(lines)
