@@ -1,36 +1,32 @@
-import math
-from typing import Tuple, List
+from dataclasses import dataclass
+
+import numpy as np
+from scipy.spatial.distance import euclidean
 
 
+@dataclass(frozen=True)
+class Point:
+    x: int = 0
+    y: int = 0
 
+    @property
+    def data(self):
+        return np.array([self.x, self.y], dtype=np.int)
+
+
+@dataclass
 class Area(object):
-    def __init__(self, r: int, c: int):
-        self.rows = r
-        self.columns = c
+    rows: int
+    columns: int
 
-    def cell(self, cell: Tuple[int, int]):
-        r, c = cell
-        return r + c * self.rows
+    def cell_id(self, point: Point):
+        return point.x + point.y * self.rows
 
-    def tuple(self, cell_id: int):
-        c = cell_id // self.rows
-        r = cell_id - c * self.rows
-        return r, c
+    def point(self, cell_id: int):
+        x = cell_id % self.rows
+        y = cell_id // self.columns
+        return Point(x, y)
 
-    def dist(self, id1: int, id2: int):
-        i1, j1 = self.tuple(id1)
-        i2, j2 = self.tuple(id2)
-        di, dj = i1 - i2, j1 - j2
-        return math.ceil(math.sqrt(di * di + dj * dj))
-
-
-if __name__ == '__main__':
-    r = 10
-    c = 20
-    area = Area(r, c)
-    for i in range(r):
-        for j in range(c):
-            cell = area.cell((i, j))
-            (x, y) = area.tuple(cell)
-            assert i == x, ((i, j), (x, y))
-            assert j == y, ((i, j), (x, y))
+    @classmethod
+    def dist(cls, a: Point, b: Point):
+        return np.ceil(euclidean(a.data, b.data))

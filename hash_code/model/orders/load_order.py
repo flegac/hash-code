@@ -12,7 +12,7 @@ class LoadOrder(DroneOrder):
         drone = state.drones[self.drone_id]
         wh = state.warehouses[self.warehouse_id]
 
-        if not self.fly_to(state, wh.cell_id):
+        if not self.fly_to(state, wh.cell):
             return
 
         state.transfert(wh, drone, self.product_id, self.n)

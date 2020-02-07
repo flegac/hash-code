@@ -1,13 +1,17 @@
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Set
 
 from hash_code.model.drone import DroneOrder
 from hash_code.model.state import State
 
 
-class Simulator(object):
-    def __init__(self, state: State):
-        self.state = state
-        self._idle_drones = set([_.drone_id for _ in state.drones if _.current_order])
+@dataclass
+class Simulator:
+    state: State
+    _idle_drones: Set[int] = field(init=False)
+
+    def __post_init__(self, ):
+        self._idle_drones = set([_.drone_id for _ in self.state.drones if _.current_order])
 
     def simulate(self):
         assert self.state.current_time < self.state.deadline

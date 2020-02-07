@@ -1,13 +1,19 @@
+from dataclasses import dataclass, field
 from typing import List
 
+from hash_code.model.area import Point
 
-class CustomerOrder(object):
-    def __init__(self, order_id: int, cell_id: int, products: List[int]):
-        self.order_id = order_id
-        self.cell_id = cell_id
-        self.products = products
-        self.completion_time = None
-        self.delivered = [0] * len(products)
+
+@dataclass
+class CustomerOrder:
+    order_id: int
+    cell: Point
+    products: List[int]
+    completion_time: int = None
+    delivered: List[int] = field(init=False)
+
+    def __post_init__(self):
+        self.delivered = [0] * len(self.products)
 
     def is_done(self):
         for _ in range(len(self.products)):

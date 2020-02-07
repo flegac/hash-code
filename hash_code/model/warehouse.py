@@ -1,9 +1,15 @@
+from dataclasses import dataclass, field
 from typing import List
 
+from hash_code.model.area import Point
 
-class Warehouse(object):
-    def __init__(self, warehouse_id: int, cell_id: int, products: List[int]):
-        self.warehouse_id = warehouse_id
-        self.cell_id = cell_id
-        self.products = products
-        self.reserved = [0] * len(products)
+
+@dataclass
+class Warehouse:
+    warehouse_id: int
+    cell: Point
+    products: List[int]
+    reserved: List[int] = field(init=False)
+
+    def __post_init__(self):
+        self.reserved = [0] * len(self.products)

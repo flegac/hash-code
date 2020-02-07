@@ -13,7 +13,7 @@ class DeliverOrder(DroneOrder):
         order = state.orders[self.order_id]
         assert drone.products[self.product_id] >= self.n
 
-        if not self.fly_to(state, order.cell_id):
+        if not self.fly_to(state, order.cell):
             return
 
         state.deliver(drone, self.product_id, self.n)

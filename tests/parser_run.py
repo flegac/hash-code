@@ -25,12 +25,12 @@ def show_data(path: str):
     points = Points()
 
     for wh in sim.warehouses:
-        x, y = sim.area.tuple(wh.cell_id)
+        x, y = wh.cell.data
         size = weight(wh.products)
         points.point(x, y, size, 'red')
 
     for order in sim.orders:
-        x, y = sim.area.tuple(order.cell_id)
+        x, y = order.cell.data
         size = weight(order.products)
         points.point(x, y, size, 'blue')
 
@@ -45,6 +45,7 @@ def show_data(path: str):
 
 
 if __name__ == '__main__':
+
     solver = SimpleSolver()
 
     total_score = 0

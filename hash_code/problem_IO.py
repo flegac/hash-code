@@ -2,6 +2,7 @@ import os
 
 from typing.io import TextIO
 
+from hash_code.model.area import Area
 from hash_code.model.orders.deliver_order import DeliverOrder
 from hash_code.model.orders.load_order import LoadOrder
 from hash_code.model.orders.unload_order import UnloadOrder
@@ -66,9 +67,9 @@ class ProblemIO(object):
 
 
 def parse_parameters(name, fd: TextIO):
-    rows, columns, drones, deadline, max_load = read_list(fd)
+    rows, columns, drone_number, deadline, max_load = read_list(fd)
     product_weights = read_list(fd, with_size=True)
-    state = State(name, rows, columns, drones, deadline, max_load, product_weights)
+    state = State(name, deadline, Area(rows, columns), drone_number, product_weights, max_load)
     return state
 
 

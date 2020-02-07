@@ -1,5 +1,8 @@
 import abc
+from dataclasses import dataclass, field
 from typing import List
+
+from hash_code.model.area import Point, Area
 
 
 class DroneOrder(abc.ABC):
@@ -22,32 +25,37 @@ class DroneOrder(abc.ABC):
     def remaining_time(self):
         return self._fly_time
 
-    def fly_to(self, state, cell_id: int) -> bool:
+    def fly_to(self, state, cell: Point) -> bool:
         drone = state.drones[self.drone_id]
 
         if self._fly_time is None:
-            self._fly_time = state.area.dist(drone.cell_id, cell_id)
+            self._fly_time = Area.dist(drone.cell, cell)
 
         if self._fly_time > 0:
             self._fly_time -= 1
             return False
 
-        drone.cell_id = cell_id
+        drone.cell = cell
         return True
 
     def export(self) -> str:
         raise ValueError()
 
 
+@dataclass
 class Drone(object):
-    def __init__(self, drone_id, cell_id: int, product_number: int):
-        self.drone_id = drone_id
-        self.cell_id = cell_id
-        self.products = [0] * product_number
-        self.weight = 0
+    drone_id: int
+    cell: Point
+    product_number: int
+    products: List[int] = field(init=False)
+    weight: int = 0
+    order_queue: List[DroneOrder] = field(init=False)
+    order_history: List[DroneOrder] = field(init=False)
 
-        self.order_queue: List[DroneOrder] = []
-        self.order_history: List[DroneOrder] = []
+    def __post_init__(self):
+        self.products = [0] * self.product_number
+        self.order_queue = []
+        self.order_history = []
 
     def update(self, state) -> bool:
         order = self.current_order
