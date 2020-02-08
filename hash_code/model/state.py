@@ -31,6 +31,7 @@ class State:
     def deliver(self, drone: Drone, product_id: int, n: int):
         self.transfert(self._deliver_warehouse, drone, product_id, -n)
 
+
     def transfert(self, warehouse: Warehouse, drone: Drone, product_id: int, n: int):
         assert warehouse.products[product_id] - n >= 0
         assert drone.products[product_id] + n >= 0

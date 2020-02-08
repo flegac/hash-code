@@ -58,11 +58,11 @@ class ProblemIO(object):
 
     @staticmethod
     def export(path: str, state: State):
-        line_number = sum([len(drone.order_history + drone.order_queue) for drone in state.drones])
-        with open(path, 'w') as fd:
+        line_number = sum([len(drone.order_queue) for drone in state.drones])
+        with open('{}_{}'.format(path, state.score()), 'w') as fd:
             fd.write('{}\n'.format(line_number))
             for drone in state.drones:
-                lines = [_.export() + '\n' for _ in drone.order_history + drone.order_queue]
+                lines = [_.export() + '\n' for _ in drone.order_queue]
                 fd.writelines(lines)
 
 

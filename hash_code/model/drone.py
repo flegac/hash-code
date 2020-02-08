@@ -5,21 +5,21 @@ from typing import List
 from hash_code.model.area import Point, Area
 
 
+@dataclass
 class DroneOrder(abc.ABC):
-    def __init__(self, drone_id: int):
-        self.drone_id = drone_id
-        self._done = False
+    drone_id: int
+    is_done: bool = field(init=False)
+    _fly_time: int = field(init=False)
+
+    def __post_init__(self):
+        self.is_done = False
         self._fly_time = None
 
     def execute(self, state):
         raise ValueError()
 
     def mark_as_done(self):
-        self._done = True
-
-    @property
-    def is_done(self):
-        return self._done
+        self.is_done = True
 
     @property
     def remaining_time(self):
@@ -50,20 +50,18 @@ class Drone(object):
     products: List[int] = field(init=False)
     weight: int = 0
     order_queue: List[DroneOrder] = field(init=False)
-    order_history: List[DroneOrder] = field(init=False)
+    current_order_id: int = 0
 
     def __post_init__(self):
         self.products = [0] * self.product_number
         self.order_queue = []
-        self.order_history = []
 
     def update(self, state) -> bool:
         order = self.current_order
         if order:
             order.execute(state)
             if order.is_done:
-                self.order_queue.pop(0)
-                self.order_history.append(order)
+                self.current_order_id += 1
         return self.current_order is None
 
     def give_order(self, order: DroneOrder):
@@ -72,6 +70,6 @@ class Drone(object):
     @property
     def current_order(self):
         try:
-            return self.order_queue[0]
-        except IndexError:
+            return self.order_queue[self.current_order_id]
+        except:
             return None

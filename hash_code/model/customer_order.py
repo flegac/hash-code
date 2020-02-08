@@ -15,8 +15,9 @@ class CustomerOrder:
     def __post_init__(self):
         self.delivered = [0] * len(self.products)
 
-    def is_done(self):
+    def deliver(self, product_id: int, quantity: int, current_time: int):
+        self.delivered[product_id] += quantity
         for _ in range(len(self.products)):
-            if self.products[_] < self.delivered[_]:
-                return False
-        return True
+            if self.products[_] > self.delivered[_]:
+                return
+        self.completion_time = current_time

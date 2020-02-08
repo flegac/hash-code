@@ -30,7 +30,7 @@ class SimpleSolver(Solver):
             IGNORE_SCORE = 1000000
 
             score = 0
-            if len(drone.order_queue) > 1:
+            if len(drone.order_queue) - drone.current_order_id > 1:
                 return IGNORE_SCORE
             if drone.current_order is not None:
                 if drone.current_order.remaining_time is None:
@@ -42,24 +42,28 @@ class SimpleSolver(Solver):
         drones = sorted(self.sim.state.drones, key=metric)
         return drones[0]
 
-    def travel_time_metric(self, order: CustomerOrder):
-        value = self.wh_order_dist[self.state.warehouses[0].warehouse_id, order.order_id] * 2
-        for product_id, n in enumerate(order.products):
-            if n == 0:
-                continue
+    def travel_time_metric(self, initial_dist: float = 2, wh_dist: float = 1):
+        def metric(order: CustomerOrder):
+            value = self.wh_order_dist[self.state.warehouses[0].warehouse_id, order.order_id] * initial_dist
+            for product_id, n in enumerate(order.products):
+                if n == 0:
+                    continue
 
-            wh = self.find_best_warehouse(order, product_id, n)
-            value += self.wh_dist[self.state.warehouses[0].warehouse_id, wh.warehouse_id] * 1
+                wh = self.find_best_warehouse(order, product_id, n)
+                value += self.wh_dist[self.state.warehouses[0].warehouse_id, wh.warehouse_id] * wh_dist
 
-            max_items = math.floor(self.state.max_load // self.state.product_weights[product_id])
-            k = min(n, max_items)
-            value += self.wh_order_dist[wh.warehouse_id, order.order_id] * math.ceil(n // k) * 1
+                max_items = math.floor(self.state.max_load // self.state.product_weights[product_id])
+                k = min(n, max_items)
+                value += self.wh_order_dist[wh.warehouse_id, order.order_id] * math.ceil(n // k) * wh_dist
 
-        return value
+            return value
+
+        return metric
 
     def task_generator(self, orders: List[CustomerOrder]):
         while len(orders) > 0:
-            _ = orders.pop(0)
+            pos = 0  # random.randint(0, min(5, len(orders) - 1))
+            _ = orders.pop(pos)
             for product_id, n in enumerate(_.products):
                 max_items = math.floor(self.state.max_load // self.state.product_weights[product_id])
                 k = min(n, max_items)
@@ -79,7 +83,10 @@ class SimpleSolver(Solver):
             np.array([_.cell.data for _ in self.sim.state.warehouses]),
             np.array([_.cell.data for _ in self.sim.state.warehouses]),
             Area.dist)
-        orders = sorted(self.state.orders, key=self.travel_time_metric)
+        orders = sorted(self.state.orders, key=self.travel_time_metric(2,1))
+        # orders = orders[:self.state.drone_number] + sorted(orders[self.state.drone_number:],
+        #                                                    key=self.travel_time_metric(0,1))
+
         if self.permutation is not None:
             orders = [self.state.orders[b] for b in self.permutation]
 
