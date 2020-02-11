@@ -33,7 +33,10 @@ class ProblemIO(object):
     def parse_input(path: str):
         with open(path) as fd:
             name = os.path.basename(path)
-            state = parse_parameters(name, fd)
+            rows, columns, drone_number, deadline, max_load = read_list(fd)
+            product_weights = read_list(fd, with_size=True)
+            state = State(name, deadline, Area(rows, columns), drone_number, product_weights, max_load)
+
             parse_warehouses(fd, state)
             parse_customers(fd, state)
         return state

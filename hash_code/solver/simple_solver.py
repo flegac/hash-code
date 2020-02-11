@@ -39,15 +39,14 @@ class SimpleSolver(Solver):
             return Area.dist(drone.cell, wh.cell)
 
         wh = self.find_best_warehouse(order, product_id, n)
-        drones = sorted(self.sim.state.drones, key=metric)
-        return drones[0]
+
+        return min(self.sim.state.drones, key=metric)
 
     def travel_time_metric(self, initial_dist: float = 2, wh_dist: float = 1):
         def metric(order: CustomerOrder):
             value = self.wh_order_dist[self.state.warehouses[0].warehouse_id, order.order_id] * initial_dist
-            for product_id, n in enumerate(order.products):
-                if n == 0:
-                    continue
+            for product_id, task in order.task_by_product.items():
+                n = task.quantity
 
                 wh = self.find_best_warehouse(order, product_id, n)
                 value += self.wh_dist[self.state.warehouses[0].warehouse_id, wh.warehouse_id] * wh_dist
@@ -61,10 +60,9 @@ class SimpleSolver(Solver):
         return metric
 
     def task_generator(self, orders: List[CustomerOrder]):
-        while len(orders) > 0:
-            pos = 0  # random.randint(0, min(5, len(orders) - 1))
-            _ = orders.pop(pos)
-            for product_id, n in enumerate(_.products):
+        for _ in orders:
+            for task in _.tasks:
+                product_id, n = task.product_id, task.quantity
                 max_items = math.floor(self.state.max_load // self.state.product_weights[product_id])
                 k = min(n, max_items)
                 while n > 0:
@@ -83,7 +81,7 @@ class SimpleSolver(Solver):
             np.array([_.cell.data for _ in self.sim.state.warehouses]),
             np.array([_.cell.data for _ in self.sim.state.warehouses]),
             Area.dist)
-        orders = sorted(self.state.orders, key=self.travel_time_metric(2,1))
+        orders = sorted(self.state.orders, key=self.travel_time_metric(2, 1))
         # orders = orders[:self.state.drone_number] + sorted(orders[self.state.drone_number:],
         #                                                    key=self.travel_time_metric(0,1))
 
@@ -114,7 +112,6 @@ class SimpleSolver(Solver):
         ])
 
     def find_best_warehouse(self, order: CustomerOrder, product_id: int, n: int):
-        for wh in sorted(self.state.warehouses, key=lambda wh: self.wh_order_dist[wh.warehouse_id][order.order_id]):
-            if wh.products[product_id] - wh.reserved[product_id] >= n:
-                return wh
-        raise ValueError()
+        warehouses = filter(lambda wh: wh.products[product_id] - wh.reserved[product_id] >= n, self.state.warehouses)
+        wh = min(warehouses, key=lambda wh: self.wh_order_dist[wh.warehouse_id][order.order_id])
+        return wh
