@@ -1,7 +1,10 @@
 import random
-from typing import List, Dict
+from typing import List, Iterable
 
-from hash_code.problem import Problem, Library
+import numpy as np
+
+from hash_code.optimizer import Optimizer
+from hash_code.problem import Problem
 from hash_code.solution import Solution
 from hash_code.utils import find_best_solution
 
@@ -9,89 +12,107 @@ from hash_code.utils import find_best_solution
 class Solver(object):
     def __init__(self, problem: Problem):
         self.problem = problem
-        self.book_availability = [0] * self.problem.book_number
+        self.book_max_score = max(self.problem.book_scores)
+
+        self.book_to_lib: List[List[int]] = [list() for _ in range(problem.book_number)]
         for lib in self.problem.libraries:
-            for _ in lib.library_books:
-                self.book_availability[_] += 1
+            for book_id in lib.books:
+                self.book_to_lib[book_id].append(lib.lib_id)
+
+        self.book_max_avail = max(len(_) for _ in self.book_to_lib)
 
     # ----- SOLVER -------------------------------------------------------------------
     def solve(self, root_path: str = None) -> Solution:
         problem = self.problem
 
-        _, best = find_best_solution(root_path, problem.name)
-        try:
-            solution = Solution.parse(best)
-            library_scan_order = solution.library_scan_order
-            books_scan_order = solution.books_scan_order
-            # self.mutate(library_scan_order, n=2)
-            for _, books in books_scan_order.items():
-                self.mutate(books, n=2)
-        except:
-            libraries = problem.libraries.copy()
-            # libraries = list(sorted(libraries, key=self.library_score1))
-            random.shuffle(libraries)
+        library_order = [_.lib_id for _ in problem.libraries]
+        library_order = sorted(library_order, key=self.library_score, reverse=True)
 
-            books_scan_order = {
-                # _.lib_id: sorted(_.library_books, key=self.book_score)
-                _.lib_id: _.library_books.copy()
-                for _ in libraries
-            }
-            for _ in books_scan_order.values():
-                random.shuffle(_)
+        books_order = self.map_book_to_libs(library_order)
 
-            library_scan_order = [_.lib_id for _ in libraries]
-            books_scan_order = self.clean_book_scan_order(library_scan_order, books_scan_order)
-            library_scan_order = list(filter(lambda _: (len(books_scan_order[_]) > 0), library_scan_order))
+        library_order = tuple(filter(lambda _: len(books_order[_]) > 0, library_order))
 
-        return Solution(
+        solution = Solution(
             name=problem.name,
-            library_scan_order=library_scan_order,
-            books_scan_order=books_scan_order
+            library_order=library_order,
+            books_order=books_order
         )
+        problem.check(solution)
+        new_solution = Optimizer(problem, solution).optimize(2)
+        return new_solution
 
     # --------------------------------------------------------------------------------
     # --------------------------------------------------------------------------------
+
+    def map_book_to_libs(self, library_order: Iterable[int]):
+        books_order = {
+            _: []
+            for _ in library_order
+        }
+
+        print('mapping books to libraries')
+
+        def transform(books):
+            return books
+
+        # if self.book_max_avail > 1:
+        #     def transform(books):
+        #         return list(sorted(books, key=self.library_score, reverse=False))
+        book_to_lib = [transform(_) for _ in self.book_to_lib]
+
+        available_libraries = set(library_order)
+
+        for book_id in sorted(range(self.problem.book_number), key=self.book_score, reverse=True):
+            libraries = list(available_libraries.intersection(book_to_lib[book_id]))
+            if len(libraries) > 0:
+                lib_id = random.choice(libraries)
+                books_order[lib_id].append(book_id)
+
+        return {
+            _: tuple(books_order[_])
+            for _ in books_order
+        }
 
     def book_score(self, book_id):
-        return - self.problem.book_scores[book_id]
+        score = self.problem.book_scores[book_id] / self.book_max_score
+        avail = (len(self.book_to_lib[book_id]) / self.book_max_avail)
+        return score * score  # - avail * avail
 
-    def library_score(self, lib: Library):
-        return sum(self.problem.book_scores[_] for _ in lib.library_books)
+    def library_score(self, lib_id: int):
+        books = self.problem.libraries[lib_id].books
+        score = np.max([self.book_score(_) for _ in books]) / self.book_max_score
+        avail = np.min([len(self.book_to_lib[_]) for _ in books])
+        return score * score * avail
 
-    def library_score1(self, library: Library, signup_time: int = None):
-        signup_time = signup_time or library.signup_days
-        book_number = (self.problem.day_number - signup_time) * library.books_per_day
-        books = library.library_books[:book_number]
 
-        avail = sum(self.book_availability[_] for _ in books)
-
-        return sum(self.problem.book_scores[_] for _ in books) - avail
-
-    def mutate(self, permutation: List[int], n: int = 1):
-        for _ in range(n):
-            i = random.randint(0, len(permutation) - 1)
-            j = random.randint(0, len(permutation) - 1)
-            # i = random.randint(0, len(permutation) // 2)
-            # j = random.randint(0, len(permutation) // 2)
-            # i = random.randint(len(permutation) // 2, len(permutation) - 1)
-            # j = random.randint(len(permutation) // 2, len(permutation) - 1)
-            permutation[i], permutation[j] = permutation[j], permutation[i]
-
-    def clean_book_scan_order(self, library_scan_order: List[int], books_scan_order: Dict[int, List[int]]):
+class BestSolver(Solver):
+    def solve(self, root_path: str = None) -> Solution:
         problem = self.problem
-        remaining_time = problem.day_number
-        scanned_books = set()
+        _, best = find_best_solution(root_path, problem.name)
+        solution = Solution.parse(best, name=problem.name)
+        return Optimizer(problem, solution).optimize(2)
 
-        for lib_id in library_scan_order:
-            lib = problem.libraries[lib_id]
-            remaining_time -= lib.signup_days
-            if remaining_time <= 0:
-                break
-            book_number = remaining_time * lib.books_per_day
-            books = set(books_scan_order[lib_id])
-            books.difference_update(scanned_books)
-            books = sorted(books, key=self.book_score)
-            books_scan_order[lib_id] = books[:book_number]
-            scanned_books.update(books)
 
-        return books_scan_order
+class RandomSolver(Solver):
+    def solve(self, root_path: str = None) -> Solution:
+        problem = self.problem
+
+        libraries = list(problem.libraries)
+        random.shuffle(libraries)
+
+        books_order = {
+            _.lib_id: list(_.books)
+            for _ in libraries
+        }
+        for _ in books_order.values():
+            random.shuffle(_)
+
+        library_order = tuple(_.lib_id for _ in libraries)
+
+        solution = Solution(
+            name=problem.name,
+            library_order=library_order,
+            books_order=books_order
+        )
+
+        return Optimizer(problem, solution).optimize(0)

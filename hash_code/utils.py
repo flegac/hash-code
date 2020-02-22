@@ -36,13 +36,13 @@ def find_best_solution(path: str, name: str):
 
 
 def smart_export(path: str, solution: 'Solution', problem: 'Problem'):
-    solution.check(problem)
+    problem.check(solution)
 
     base_name = os.path.abspath('{}/{}_'.format(path, solution.name))
 
     max_score, _ = find_best_solution(path, solution.name)
 
-    score = solution.score(problem)
+    score = problem.score(solution)
     if score < max_score:
         return max_score
     filename = '{}{}.txt'.format(base_name, score)

@@ -1,15 +1,20 @@
+import cProfile
 import glob
 import os
 import shutil
 import time
 
 from hash_code.problem import Problem
-from hash_code.solver import Solver
+from hash_code.solver import Solver, RandomSolver, BestSolver
 from hash_code.utils import smart_export
 
 INPUT_PATH = 'input'
 OUTPUT_PATH = 'output'
 SOLVER = Solver
+# SOLVER = RandomSolver
+# SOLVER = BestSolver
+
+
 SEPARATOR = '+--------------+------+--------------+-------------------------------+------+'
 
 
@@ -26,7 +31,7 @@ def main():
     total_score = 0
     current_score = 0
     total_time = 0
-    for input_path in glob.glob('{}/[cef]*'.format(INPUT_PATH)):
+    for input_path in glob.glob('{}/[abcdef]*'.format(INPUT_PATH)):
         start = time.time()
 
         problem = Problem.parse(input_path)
@@ -34,7 +39,7 @@ def main():
 
         old_score = smart_export(OUTPUT_PATH, solution, problem)
         time_spent = time.time() - start
-        score = solution.score(problem)
+        score = problem.score(solution)
         current_score += score
         total_score += max(old_score, score)
         total_time += time_spent
@@ -59,5 +64,6 @@ def main():
 
 
 if __name__ == '__main__':
-    for i in range(100):
+    for i in range(1):
         main()
+        # cProfile.run("main()", sort=True)
