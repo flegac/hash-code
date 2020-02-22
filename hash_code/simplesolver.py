@@ -1,5 +1,6 @@
 import random
-from typing import List, Iterable
+from dataclasses import dataclass
+from typing import List, Iterable, Generic, Type
 
 import numpy as np
 
@@ -9,7 +10,7 @@ from hash_code.solution import Solution
 from hash_code.utils import find_best_solution
 
 
-class Solver(object):
+class SimpleSolver(Solver):
     def __init__(self, problem: Problem):
         self.problem = problem
         self.book_max_score = max(self.problem.book_scores)
@@ -22,7 +23,7 @@ class Solver(object):
         self.book_max_avail = max(len(_) for _ in self.book_to_lib)
 
     # ----- SOLVER -------------------------------------------------------------------
-    def solve(self, root_path: str = None) -> Solution:
+    def solve(self) -> Solution:
         problem = self.problem
 
         library_order = [_.lib_id for _ in problem.libraries]
@@ -85,7 +86,7 @@ class Solver(object):
         return score * score * avail
 
 
-class BestSolver(Solver):
+class BestSolver(SimpleSolver):
     def solve(self, root_path: str = None) -> Solution:
         problem = self.problem
         _, best = find_best_solution(root_path, problem.name)
@@ -93,7 +94,7 @@ class BestSolver(Solver):
         return Optimizer(problem, solution).optimize(2)
 
 
-class RandomSolver(Solver):
+class RandomSolver(SimpleSolver):
     def solve(self, root_path: str = None) -> Solution:
         problem = self.problem
 

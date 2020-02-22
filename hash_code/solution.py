@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple
+from typing import Dict, Tuple
 
 from hash_code.utils import read, write
 
@@ -26,7 +26,7 @@ class Solution:
 
     # ----- PARSING ------------------------------------------------------------------
     @staticmethod
-    def parse(path: str, name:str=None) -> 'Solution':
+    def parse(path: str, name: str = None) -> 'Solution':
         if name is None:
             name, _ = os.path.splitext(os.path.basename(path))
         with open(path) as fd:
