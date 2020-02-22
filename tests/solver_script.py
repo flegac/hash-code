@@ -1,4 +1,5 @@
 import glob
+import os
 import shutil
 import time
 
@@ -25,36 +26,38 @@ def main():
     total_score = 0
     current_score = 0
     total_time = 0
-    for input_path in glob.glob('{}/*'.format(INPUT_PATH)):
+    for input_path in glob.glob('{}/[cef]*'.format(INPUT_PATH)):
         start = time.time()
 
         problem = Problem.parse(input_path)
-        solution = SOLVER(problem).solve()
+        solution = SOLVER(problem).solve(OUTPUT_PATH)
 
-        old_score = smart_export(OUTPUT_PATH, solution)
+        old_score = smart_export(OUTPUT_PATH, solution, problem)
         time_spent = time.time() - start
-        current_score += solution.score
-        total_score += max(old_score, solution.score)
+        score = solution.score(problem)
+        current_score += score
+        total_score += max(old_score, score)
         total_time += time_spent
-        ratio = int(100 * max(old_score, solution.score) / max(1, solution.max_score))
+        ratio = int(100 * max(old_score, score) / max(1, problem.max_score))
         print('| {improved} {name:10} | {ratio:3}% | {max:12} | {evolution:26}  | {time:.1f}s |'.format(
-            improved='*' if old_score < solution.score else ' ',
+            improved='*' if old_score < score else ' ',
             name=problem.name[:10],
             evolution='{old:12} -> {new:12}'.format(
                 old=old_score,
-                new=solution.score),
-            max=solution.max_score,
+                new=score),
+            max=problem.max_score,
             ratio=ratio,
             time=time_spent
         ))
     print(SEPARATOR)
-
     print('current total score : {}, total time : {:.1f}s'.format(current_score, total_time))
     print('best total score    : {}'.format(total_score))
 
-    shutil.make_archive('{}/_code'.format(OUTPUT_PATH), 'zip', '../hash_code')
+    zip_archive_path = '{}/_code'.format(OUTPUT_PATH)
+    if not os.path.exists(zip_archive_path + '.zip'):
+        shutil.make_archive(zip_archive_path, 'zip', '../hash_code')
 
 
 if __name__ == '__main__':
-    main()
-    # cProfile.run("main()", sort=True)
+    for i in range(100):
+        main()
