@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from hc_2015.memory import MemPage
+from hash_lib.memory import MemPage
 
 
 @dataclass
@@ -13,12 +13,16 @@ class Server:
     capacity: int
     size: int
 
-    page: Optional[MemPage] = None
     pool_id: Optional[int] = None
+    page: Optional[MemPage] = None
 
     @property
     def efficiency(self):
         return self.capacity / self.size
+
+    @property
+    def row(self):
+        return self.page.mem_id if self.page else None
 
 
 @dataclass
@@ -42,6 +46,7 @@ class Problem:
                 ))
             self.pools = int(P)
 
+    def log_stats(self):
         print('pools=', self.pools,
               'rows=', self.rows,
               'total=', self.pools * self.rows)
