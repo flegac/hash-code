@@ -1,20 +1,20 @@
 import random
 from collections import defaultdict
 from pathlib import Path
-from typing import List
 
-from hash_lib.memory import Memories
+from hash_lib.memory import Memory2D
+from hash_lib.timing import setup_timing, show_timing, timing
 from hc_2015.problem import Problem, Server
 from hc_2015.solution import Solution
 
 
 class Solver:
-    def __init__(self, problem: Problem):
-        self.seed = 22
-        self.noise_strength = .2
+    def __init__(self, problem: Problem, seed: int, noise_strength: float):
+        self.seed = seed
+        self.noise_strength = noise_strength
         self.problem = problem
         self.solution = Solution(problem)
-        self.memories = Memories(rows=self.problem.rows, size=self.problem.slots)
+        self.memories = Memory2D(rows=self.problem.rows, size=self.problem.slots)
         self.memories.dump()
         for row in range(self.problem.rows):
             for slot in range(self.problem.slots):
@@ -25,55 +25,52 @@ class Solver:
 
         self.server_by_efficiency, self.server_by_size_power = self.server_lookup()
 
+    def noise(self):
+        return 1 - self.noise_strength + random.random() * 2 * self.noise_strength
+
     def solve(self):
-        random.seed(self.seed)
-        server_order = lambda s: -s.capacity * (1 - self.noise_strength + random.random() * 2 * self.noise_strength)
-        row_order = lambda r: self.memories.free_space(r)
-        pool_score = lambda p: self.solution.pool_score(p)
+        with timing('Solver.solve2'):
+            server_score = lambda s: -s.efficiency
+            pool_score = lambda p: self.solution.pool_score(p)
+            row_score = lambda r: self.memories.free_space(r)
 
-        def server_gen():
-            servers = list(filter(lambda s: s.pool_id is None, self.problem.servers))
-            while len(servers) > 0:
-                servers = list(filter(lambda s: s.pool_id is None, self.problem.servers))
-                servers.sort(key=server_order)
-                yield servers[:self.problem.pools]
+            random.seed(self.seed)
+            pools = list(range(self.problem.pools))
+            rows = list(range(self.problem.rows))
 
-        def row_gen():
-            rows = range(problem.rows)
-            while True:
-                vals = [row_order(r) for r in rows]
-                yield max(rows, key=row_order)
+            with timing('Solver.solve.assign_pages'):
+                servers = sorted(self.problem.servers, key=server_score)
+                for i, server in enumerate(servers):
+                    try:
+                        if server.page is None:
+                            # row = max(rows, key=row_score)
+                            row = i % self.problem.rows
+                            server.page = self.memories.row_alloc(row=row, size=server.size)
+                            self.assign(server, row=row)
+                    except:
+                        pass
+            assigned = len([s for s in servers if s.page])
+            print(f'assigned: {assigned}/{len(servers)}')
+            with timing('Solver.solve.assign_pools'):
+                servers = sorted(self.problem.servers, key=server_score)
+                for i, server in enumerate(servers):
+                    if server.page:
+                        pool_id = min(pools, key=pool_score)
+                        self.assign(server, pool_id=pool_id)
 
-        def assign_row(row: int, servers: List[Server]):
-            pools = list(range(problem.pools))
-            pools.sort(key=pool_score)
-            for i, pool_id in enumerate(pools):
-                server = servers[i]
-                try:
-                    self.assign(server, row=row, pool_id=pool_id)
-                except:
-                    if i == 0:
-                        raise ValueError()
-                    else:
-                        break
+            return self.solution
 
-        for row, servers in zip(row_gen(), server_gen()):
-            try:
-                assign_row(row, servers)
-            except Exception as e:
-                break
+    def assign(self, server: Server, row: int = None, pool_id: int = None):
+        if row:
+            page = self.memories.row_alloc(row, server.size)
+            if page:
+                server.page = page
+            else:
+                raise ValueError()
 
-        self.memories.dump()
-
-        return self.solution
-
-    def assign(self, server: Server, row: int, pool_id: int):
-        page = self.memories.alloc(row, server.size)
-        if page:
+        if pool_id is not None and server.page is not None:
             server.pool_id = pool_id
-            server.page = page
-        else:
-            raise ValueError()
+            self.solution.pool_row_scores[server.pool_id][server.row] += server.capacity
 
     def unset(self, server: Server):
         self.memories.free(server.page)
@@ -99,18 +96,24 @@ def check_score():
 
 
 if __name__ == '__main__':
+    setup_timing()
+
     check_score()
-
     path = Path('dc.in')
-    problem = Problem(path)
-    problem.log_stats()
 
-    solution = Solver(problem).solve()
-    score = solution.score()
-    print('score:', score)
-    out_path = path.with_suffix(f'.{score}.out')
-    solution.save(out_path)
+    # sol_358 = Solution(Problem(path)).load(Path('358.txt'))
+    # sol_358.compute_heatmap()
+    # print('358.txt', sol_358.score())
 
-    solution2 = Solution(Problem(path))
-    solution2.load(Path('358.txt'))
-    print('score:', solution2.score())
+    noise_strength = .2
+
+    for seed in range(1):
+        sol = Solver(Problem(path), seed=seed, noise_strength=noise_strength).solve()
+        sol.compute_heatmap()
+
+        score = sol.score()
+        print('seed', seed, 'score:', score)
+        out_path = path.with_suffix(f'.{score}.out')
+        sol.save(out_path)
+
+    show_timing()

@@ -5,12 +5,12 @@ import shutil
 import time
 
 from hash_code.problem import Problem
-from hash_code.simplesolver import SimpleSolver, RandomSolver, BestSolver
+from hash_code.solver import Solver, RandomSolver, BestSolver
 from hash_code.utils import smart_export
 
 INPUT_PATH = 'input'
 OUTPUT_PATH = 'output'
-SOLVER = SimpleSolver
+SOLVER = Solver
 # SOLVER = RandomSolver
 # SOLVER = BestSolver
 
@@ -35,7 +35,7 @@ def main():
         start = time.time()
 
         problem = Problem.parse(input_path)
-        solution = SOLVER(problem).solve(OUTPUT_PATH)
+        solution = SOLVER(problem).solve()
 
         old_score = smart_export(OUTPUT_PATH, solution, problem)
         time_spent = time.time() - start

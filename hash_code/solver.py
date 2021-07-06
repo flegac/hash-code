@@ -1,6 +1,5 @@
 import random
-from dataclasses import dataclass
-from typing import List, Iterable, Generic, Type
+from typing import List, Iterable
 
 import numpy as np
 
@@ -10,17 +9,20 @@ from hash_code.solution import Solution
 from hash_code.utils import find_best_solution
 
 
-class SimpleSolver(Solver):
+class Solver(object):
     def __init__(self, problem: Problem):
         self.problem = problem
-        self.book_max_score = max(self.problem.book_scores)
 
         self.book_to_lib: List[List[int]] = [list() for _ in range(problem.book_number)]
         for lib in self.problem.libraries:
             for book_id in lib.books:
                 self.book_to_lib[book_id].append(lib.lib_id)
 
+        self.book_max_score = max(self.problem.book_scores)
         self.book_max_avail = max(len(_) for _ in self.book_to_lib)
+
+        self.book_scores = [_ / self.book_max_score for _ in self.problem.book_scores]
+        self.book_avails = [1 - len(_) / self.book_max_avail for _ in self.book_to_lib]
 
     # ----- SOLVER -------------------------------------------------------------------
     def solve(self) -> Solution:
@@ -63,30 +65,31 @@ class SimpleSolver(Solver):
 
         available_libraries = set(library_order)
 
-        for book_id in sorted(range(self.problem.book_number), key=self.book_score, reverse=True):
+        for book_id in sorted(range(self.problem.book_number), key=lambda _: self.book_scores[_], reverse=True):
             libraries = list(available_libraries.intersection(book_to_lib[book_id]))
             if len(libraries) > 0:
                 lib_id = random.choice(libraries)
+                # lib_id = min(libraries, key=self.library_score)
+
                 books_order[lib_id].append(book_id)
 
         return {
-            _: tuple(books_order[_])
+            _: tuple(sorted(books_order[_], key=lambda _: self.book_scores[_], reverse=True))
             for _ in books_order
         }
 
     def book_score(self, book_id):
-        score = self.problem.book_scores[book_id] / self.book_max_score
-        avail = (len(self.book_to_lib[book_id]) / self.book_max_avail)
-        return score * score  # - avail * avail
+        score = self.book_scores[book_id]
+        avail = self.book_avails[book_id]
+        return score * avail * avail
 
     def library_score(self, lib_id: int):
         books = self.problem.libraries[lib_id].books
-        score = np.max([self.book_score(_) for _ in books]) / self.book_max_score
-        avail = np.min([len(self.book_to_lib[_]) for _ in books])
-        return score * score * avail
+        score = sum([self.book_score(_) for _ in books])
+        return score
 
 
-class BestSolver(SimpleSolver):
+class BestSolver(Solver):
     def solve(self, root_path: str = None) -> Solution:
         problem = self.problem
         _, best = find_best_solution(root_path, problem.name)
@@ -94,7 +97,7 @@ class BestSolver(SimpleSolver):
         return Optimizer(problem, solution).optimize(2)
 
 
-class RandomSolver(SimpleSolver):
+class RandomSolver(Solver):
     def solve(self, root_path: str = None) -> Solution:
         problem = self.problem
 

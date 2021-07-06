@@ -47,7 +47,7 @@ def smart_export(path: str, solution: 'Solution', problem: 'Problem'):
         return max_score
     filename = '{}{}.txt'.format(base_name, score)
 
-    solution.export(filename)
+    solution.save(filename)
 
     files = sorted([_ for _ in glob.glob('{}*'.format(base_name))], key=file_score(base_name), reverse=True)
     for _ in files[MAX_FILES:]:
