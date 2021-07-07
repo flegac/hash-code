@@ -1,15 +1,18 @@
 from hash_lib.timing import setup_timing, show_timing
-from sat.sat3_problem import Sat3Problem
-from sat.sat3_solver import Sat3Solver
+from sat.sat_problem import SATProblem
+from sat.sat_solver import SATSolver
 
 if __name__ == '__main__':
     setup_timing()
-    prob = Sat3Problem(n_vars=50, k_clauses=1000).randomize()
+    n = 20
 
-    solver = Sat3Solver(prob)
+    prob = SATProblem.ksat(clause_size=3, var_number=n, clause_number=n * n // 2)
+    # print(prob)
 
-    solution = solver.solve(max_tries=10_000)
+    solver = SATSolver(prob)
 
-    res = prob.check(solution)
-    print(res)
+    solution = solver.solve(max_retries=1_000)
+    wrongs = prob.wrong_clauses(solution)
+    print('solution', solution)
+    print(f'wrongs: {wrongs}')
     show_timing()
