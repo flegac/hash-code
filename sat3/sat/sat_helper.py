@@ -1,40 +1,46 @@
-from typing import List
-
 import numpy as np
-from scipy.spatial.distance import hamming
 
 from hash_lib.timing import timing
-from sat.sat_problem import SATProblem
-from sat.sat_solution import Var
+from sat.sat_solution import SATSolution
 
 
 class SATHelper:
 
-    def difficulty_score(self):
-        with timing('Sat3Helper.difficulty_score'):
-            n = self.problem.clause_number
-            matrix = np.zeros((n, n))
-            reference = np.zeros(self.problem.var_number)
-            for c1 in range(n):
-                for c2 in range(n):
-                    diff = self.problem.clauses[c1] - self.problem.clauses[c2]
-                    matrix[c1, c2] = hamming(diff, reference)
-            matrix[matrix == 0] = 2
-            a = np.min(matrix, axis=0)
-            b = np.unique(a)
-            return matrix
+    @staticmethod
+    def easy_solve(clauses: np.ndarray, solution: SATSolution):
+        clauses, found = SATHelper.easy_solve_single_pass(clauses, solution)
+        while found:
+            clauses, found = SATHelper.easy_solve_single_pass(clauses, solution)
+        return clauses, found
 
-    def var_occurences(self, clause_ids: List[int]):
-        occurences, counts = np.unique(np.abs(self.problem.clauses[clause_ids]), return_counts=True)
-        return occurences, counts
+    @staticmethod
+    def easy_solve_single_pass(clauses: np.ndarray, solution: SATSolution):
+        with timing('SATHelper.easy_solve_single_pass'):
+            found = False
+            for var in solution.unassigned:
+                vid = var.vid
+                clauses, val = SATHelper.try_assign_var(clauses, vid)
+                solution.variables[vid].val = val
+                if val is not None:
+                    found = True
+            return clauses, found
 
-    def search_clauses(self, var: Var, clauses: np.ndarray):
-        clauses = clauses[:, var.vid]
-        if var.val is None:
-            clauses = np.abs(clauses)
-            y = np.where(clauses != 0)
-        else:
-            sign = 1 if var.val else -1
-            y = np.where(clauses == sign)
-        res = np.unique(y)
-        return res
+    @staticmethod
+    def try_assign_var(clauses: np.ndarray, vid: int):
+        positives, negatives = SATHelper.search_clauses(clauses, vid)
+        res = None
+        if len(positives) != len(negatives):
+            if len(positives) == 0:
+                clauses = np.delete(clauses, negatives, axis=0)
+                res = False
+            elif len(negatives) == 0:
+                clauses = np.delete(clauses, positives, axis=0)
+                res = True
+        return clauses, res
+
+    @staticmethod
+    def search_clauses(clauses: np.ndarray, vid: int):
+        clauses = clauses[:, vid]
+        pos = np.where(clauses > 0)[0]
+        neg = np.where(clauses < 0)[0]
+        return pos, neg
