@@ -39,7 +39,9 @@ class SATProblem:
 
     def is_satisfied(self, cid: int, solution: SATSolution):
         clause = self.clauses[cid]
-        for var_id, val in solution.assigned:
+        for var in solution.assigned:
+            var_id = var.vid
+            val = var.val
             if clause[var_id] == 0:
                 continue
             expected = clause[var_id] > 0

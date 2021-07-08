@@ -6,8 +6,8 @@ if __name__ == '__main__':
     setup_timing()
     n = 20
 
-    prob = SATProblem.ksat(clause_size=3, var_number=n, clause_number=n * n // 2)
-    # print(prob)
+    prob = SATProblem.ksat(clause_size=3, var_number=n, clause_number=10*n)
+    print(prob)
 
     solver = SATSolver(prob)
 
